@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#06381a">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Klondike Solitaire</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none}
+body{display:flex;flex-direction:column;height:100vh;height:100dvh;background:#0b5d2a;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#bar{flex:none;display:flex;flex-direction:column;gap:5px;padding:6px 8px;background:#06381a;border-bottom:1px solid #0d4a25}
+#stats{display:flex;gap:2px 12px;font-size:14px;align-items:baseline;flex-wrap:wrap}
+#stats span{white-space:nowrap}
+#stats b{font-variant-numeric:tabular-nums}
+#label{font-size:12px;opacity:.7}
+#btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#btns button{padding:5px 9px;font-size:14px}
+#icons{display:flex;gap:6px;margin-left:auto}
+button{font:inherit;color:#fff;background:#0e7a3a;border:1px solid #3fae6d;border-radius:8px;padding:5px 10px;min-height:36px;min-width:38px;cursor:pointer}
+button:disabled{opacity:.4}
+button:active{filter:brightness(1.2)}
+#board{flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;touch-action:none;background:radial-gradient(ellipse at 50% 35%,#13803d 0%,#0b5d2a 70%,#084a21 100%)}
+.slot{position:absolute;width:var(--cw);height:var(--ch);border:2px dashed rgba(255,255,255,.28);border-radius:calc(var(--cw)*.1);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.38);font-size:calc(var(--cw)*.45)}
+.card{position:absolute;width:var(--cw);height:var(--ch);border-radius:calc(var(--cw)*.1);background:#fff;border:1px solid #777;box-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;touch-action:none}
+.card.down{background:repeating-linear-gradient(45deg,#1d4ea0 0 5px,#2b66c9 5px 10px);border:calc(var(--cw)*.05) solid #fff}
+.card .tl{position:absolute;left:calc(var(--cw)*.06);top:calc(var(--cw)*.02);font:700 calc(var(--cw)*.3)/1.1 system-ui,sans-serif;white-space:nowrap}
+.card .ct{position:absolute;right:calc(var(--cw)*.08);bottom:calc(var(--cw)*.04);font-size:calc(var(--cw)*.55);line-height:1}
+.red{color:#c8102e}.black{color:#111}
+.card.sel{box-shadow:inset 0 0 0 3px #ffd400,0 1px 3px rgba(0,0,0,.5);background-color:#fffbe0}
+.card.hint,.slot.hint{box-shadow:0 0 0 3px #00e5ff,0 0 14px #00e5ff;animation:pulse .8s infinite alternate}
+@keyframes pulse{from{filter:brightness(1)}to{filter:brightness(1.25)}}
+.card.drag{box-shadow:0 8px 18px rgba(0,0,0,.55)}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:5000;padding:12px}
+#modal.show{display:flex}
+.box{background:#fff;color:#111;border-radius:14px;padding:16px;max-width:440px;width:100%;max-height:92vh;max-height:92dvh;overflow:auto;-webkit-user-select:text;user-select:text}
+.box h2{margin:0 0 8px;font-size:20px}
+.box p{margin:6px 0}
+.box button{background:#e8eee9;color:#111;border:1px solid #9bb0a1;width:100%;margin-top:8px}
+.box button.pri{background:#0e7a3a;color:#fff;border-color:#0a5a2a}
+.box .row{display:flex;gap:8px;flex-wrap:wrap}
+.box .row button{flex:1;width:auto}
+.box .tabs button{margin-top:0;font-size:14px}
+.box .tabs button.on{background:#0e7a3a;color:#fff}
+.box input[type=text]{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid #888;border-radius:8px}
+.box label{display:block;padding:7px 0}
+.box fieldset{border:1px solid #bcc;border-radius:10px;margin:10px 0;padding:6px 10px}
+.box legend{font-weight:700;padding:0 6px}
+.box .sm{font-size:12px;color:#555}
+.box table{width:100%;border-collapse:collapse;margin-top:10px}
+.box td{padding:7px 4px;border-bottom:1px solid #ddd;vertical-align:top}
+.box td.r{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.box .note{background:#fff6d6;border-radius:8px;padding:8px;font-size:14px}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:9px 14px;border-radius:20px;font-size:14px;z-index:6000;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+@media (orientation:landscape) and (max-height:520px){
+  body{flex-direction:row}
+  #bar{width:132px;overflow-y:auto;border-bottom:none;border-right:1px solid #0d4a25;padding:6px;gap:6px}
+  #stats{flex-direction:column;gap:2px;font-size:13px}
+  #label{display:none}
+  #btns{flex-direction:column;align-items:stretch}
+  #btns button{min-height:32px;padding:3px 6px}
+  #icons{margin-left:0;gap:4px}
+  #icons button{flex:1;min-width:0;padding:3px 0}
+}
+</style>
+</head>
+<body>
+<div id="bar">
+  <div id="stats">
+    <span>Score <b id="sc">0</b></span>
+    <span>Total <b id="tot">0</b></span>
+    <span>Moves <b id="mv">0</b></span>
+    <span id="tmw">Time <b id="tm">0:00</b></span>
+  </div>
+  <div id="label"></div>
+  <div id="btns">
+    <button id="bNew">New game</button>
+    <button id="bSess">New session</button>
+    <button id="bAuto" hidden>Auto ✔</button>
+    <div id="icons">
+      <button id="bUndo" title="Undo">↶</button>
+      <button id="bHint" title="Hint">💡</button>
+      <button id="bMenu" title="Menu">☰</button>
+    </div>
+  </div>
+</div>
+<div id="board"></div>
+<div id="modal"></div>
+<div id="toast"></div>
+<noscript>This game needs JavaScript enabled.</noscript>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- constants & helpers ---------- */
+const SUITS = ['♠','♥','♦','♣'];
+const RANKS = ['','A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const MODES = {standard:'Standard', vegas:'Vegas', simple:'Simple'};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isRed = c => c.s === 1 || c.s === 2;
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+};
+const fmt = (v, mode) => mode === 'vegas' ? (v < 0 ? '-$' : '$') + Math.abs(v) : String(v);
+const dt = t => new Date(t).toLocaleString([], {year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+const clock = s => Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+
+/* ---------- persistent data ---------- */
+let settings = Object.assign({draw:3, scoring:'standard', undo:true, hint:true, dbl:true, auto:true, timer:true, sound:false, vibe:false}, store.get('ksol_settings', {}));
+let player = store.get('ksol_player', '');
+// Hall of Fame entries are finished sessions: {n:name, s:total, g:games, w:wins, d:draw, t:end time}.
+// Older single-game entries (w was true/false) are kept as one-game sessions.
+function normEntry(e){
+  if (!e || typeof e.n !== 'string' || typeof e.s !== 'number' || typeof e.t !== 'number') return null;
+  const legacy = typeof e.w === 'boolean';
+  return {n:e.n.slice(0,16), s:Math.round(e.s), t:e.t, d:e.d === 1 ? 1 : 3,
+          g: legacy ? 1 : Math.max(1, Math.floor(+e.g || 1)),
+          w: legacy ? (e.w ? 1 : 0) : Math.max(0, Math.floor(+e.w || 0))};
+}
+let hof = store.get('ksol_hof', {});
+for (const k in MODES) hof[k] = Array.isArray(hof[k]) ? hof[k].map(normEntry).filter(Boolean) : [];
+
+let S = null;            // current game
+let undoStack = [];
+let sel = null, hint = null, hintT = 0, lastTap = null, busy = false;
+let G = {};              // geometry
+const board = $('board');
+
+/* ---------- sound / vibration ---------- */
+let ac;
+function tone(f, d, type, vol, delay){
+  if (!settings.sound) return;
+  try{
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine'; o.frequency.value = f; g.gain.value = vol || .08;
+    o.connect(g); g.connect(ac.destination);
+    const t0 = ac.currentTime + (delay || 0);
+    o.start(t0); g.gain.setTargetAtTime(.0001, t0 + d*.6, d*.2); o.stop(t0 + d + .15);
+  }catch(e){}
+}
+function vib(p){ if (settings.vibe && navigator.vibrate) try{ navigator.vibrate(p); }catch(e){} }
+function sfx(k){
+  if (k === 'draw'){ tone(620,.05,'square',.04); vib(8); }
+  else if (k === 'move'){ tone(420,.07,'triangle',.08); vib(12); }
+  else if (k === 'win'){ [523,659,784,1047].forEach((f,i) => tone(f,.25,'triangle',.1,i*.15)); vib([80,60,80,60,160]); }
+}
+
+/* ---------- toast ---------- */
+let toastT = 0;
+function toast(msg, ms){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms || 2200);
+}
+
+/* ---------- sessions & game setup ---------- */
+let sess = null;   // {player, draw, mode, total, games, wins, start}: scores add up across a session
+const sessionTotal = () => sess.total + (S && !S.banked ? S.score : 0);
+const gameInProgress = () => !!(S && !S.banked && (S.moves > 0 || S.mode === 'vegas'));
+function saveSession(){ store.set('ksol_session', sess); }
+function startSession(name, draw, mode){
+  sess = {player:name, draw, mode, total:0, games:0, wins:0, start:Date.now()};
+  saveSession();
+}
+// Adds the current game's score to the session total (once). Vegas hands count from the deal, since the $52 ante is paid then.
+function bankGame(){
+  if (!S || S.banked) return;
+  S.banked = true;
+  if (S.moves > 0 || S.mode === 'vegas'){
+    sess.total += S.score; sess.games++;
+    if (S.won) sess.wins++;
+  }
+  saveSession();
+}
+// Closes the session and lists it in the Hall of Fame (if it earned points). Returns a summary.
+function endSession(){
+  if (!sess) return null;
+  bankGame();
+  const out = {total:sess.total, games:sess.games, wins:sess.wins, mode:sess.mode, rank:-1};
+  if (sess.games > 0 && (sess.total > 0 || sess.wins > 0)){
+    const e = {n:sess.player, s:sess.total, g:sess.games, w:sess.wins, d:sess.draw, t:Date.now()};
+    const l = hof[sess.mode];
+    l.push(e);
+    l.sort((a,b) => b.s - a.s || a.t - b.t);
+    const r = l.indexOf(e);
+    hof[sess.mode] = l.slice(0, 5);
+    store.set('ksol_hof', hof);
+    out.rank = r < 5 ? r : -1;
+  }
+  return out;
+}
+function dealNext(){ bankGame(); newGame(sess.draw, sess.mode); }
+
+function newGame(draw, mode){
+  const deck = [];
+  for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({s, r, u:false});
+  for (let i = 51; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+  const T = [];
+  for (let i = 0; i < 7; i++){ T.push(deck.splice(0, i+1)); T[i][i].u = true; }
+  S = {stock:deck, waste:[], F:[[],[],[],[]], T, score: mode === 'vegas' ? -52 : 0, moves:0, recycles:0, wasteFan:0, secs:0, draw, mode, won:false, banked:false, player:sess.player};
+  undoStack = []; sel = null; hint = null; lastTap = null; busy = false;
+  commit();
+}
+const pile = id => id === 'stock' ? S.stock : id === 'waste' ? S.waste : id[0] === 'f' ? S.F[+id[1]] : S.T[+id[1]];
+const canRecycle = () => S.mode !== 'vegas' || S.recycles < (S.draw === 3 ? 2 : 0);
+function add(d){ S.score += d; if (S.mode === 'standard' && S.score < 0) S.score = 0; }
+
+/* ---------- undo ---------- */
+const core = () => JSON.stringify({stock:S.stock, waste:S.waste, F:S.F, T:S.T, score:S.score, moves:S.moves, recycles:S.recycles, wasteFan:S.wasteFan});
+function pushUndo(){ undoStack.push(core()); if (undoStack.length > 150) undoStack.shift(); }
+function undo(){
+  if (!S || busy || S.won || !undoStack.length) return;
+  Object.assign(S, JSON.parse(undoStack.pop()));
+  sel = null; hint = null; commit();
+}
+
+/* ---------- rules ---------- */
+function legalDrop(cards, dst){
+  const c = cards[0];
+  if (dst[0] === 'f'){
+    if (cards.length !== 1) return false;
+    const p = S.F[+dst[1]];
+    if (!p.length) return c.r === 1;
+    const t = p[p.length-1];
+    return t.s === c.s && c.r === t.r + 1;
+  }
+  if (dst[0] === 't'){
+    const p = S.T[+dst[1]];
+    if (!p.length) return c.r === 13;
+    const t = p[p.length-1];
+    return t.u && isRed(t) !== isRed(c) && t.r === c.r + 1;
+  }
+  return false;
+}
+function canDrag(id, idx){
+  if (id === 'stock') return false;
+  const p = pile(id), c = p[idx];
+  if (!c) return false;
+  if (id === 'waste' || id[0] === 'f') return idx === p.length - 1;
+  return c.u;
+}
+
+/* ---------- actions ---------- */
+function drawStock(){
+  if (busy || !S || S.won) return;
+  if (S.stock.length){
+    pushUndo();
+    const n = Math.min(S.draw, S.stock.length);
+    for (let i = 0; i < n; i++){ const c = S.stock.pop(); c.u = true; S.waste.push(c); }
+    S.wasteFan = n; S.moves++;
+    if (S.mode === 'simple') add(-1);
+  } else if (S.waste.length){
+    if (!canRecycle()){ toast('No more passes through the stock in Vegas mode'); return; }
+    pushUndo();
+    S.stock = S.waste.reverse().map(c => { c.u = false; return c; });
+    S.waste = []; S.wasteFan = 0; S.recycles++; S.moves++;
+    if (S.mode === 'standard'){ if (S.draw === 1) add(-100); else if (S.recycles >= 3) add(-20); }
+    else if (S.mode === 'simple') add(-1);
+  } else return;
+  sfx('draw'); sel = null; hint = null; commit();
+}
+
+function applyMove(src, idx, dst){
+  pushUndo();
+  const sp = pile(src), cards = sp.splice(idx);
+  pile(dst).push(...cards);
+  const s0 = src[0], d0 = dst[0];
+  if (S.mode === 'standard'){
+    if (d0 === 'f') add(10);
+    else if (src === 'waste' && d0 === 't') add(5);
+    else if (s0 === 'f' && d0 === 't') add(-15);
+  } else if (S.mode === 'vegas'){
+    if (d0 === 'f') add(5); else if (s0 === 'f') add(-5);
+  } else {
+    add(d0 === 'f' ? 10 : s0 === 'f' ? -10 : 0); add(-1);
+  }
+  if (s0 === 't' && sp.length && !sp[sp.length-1].u){
+    sp[sp.length-1].u = true;
+    if (S.mode === 'standard') add(5);
+  }
+  if (src === 'waste') S.wasteFan = Math.max(1, S.wasteFan - 1);
+  S.moves++; sel = null; hint = null;
+  if (S.F.every(p => p.length === 13)) win();
+  else { sfx('move'); commit(); }
+}
+
+function tryAuto(id, idx){
+  if (id === 'stock' || id[0] === 'f') return false;
+  const p = pile(id);
+  if (idx !== p.length - 1) return false;
+  const c = p[idx];
+  if (!c || !c.u) return false;
+  for (let i = 0; i < 4; i++) if (legalDrop([c], 'f' + i)){ applyMove(id, idx, 'f' + i); return true; }
+  return false;
+}
+
+function canAuto(){
+  return S && !S.won && !S.stock.length && !S.waste.length && S.T.every(col => col.every(c => c.u));
+}
+function autoComplete(){
+  if (busy || !canAuto()) return;
+  busy = true;
+  const step = () => {
+    if (!S || S.won){ busy = false; return; }
+    let moved = false;
+    for (let i = 0; i < 7 && !moved; i++){
+      const col = S.T[i];
+      if (col.length && tryAuto('t' + i, col.length - 1)) moved = true;
+    }
+    if (!moved || S.won){ busy = false; return; }
+    setTimeout(step, 110);
+  };
+  step();
+}
+
+/* ---------- game end ---------- */
+function win(){
+  S.won = true;
+  if (S.mode === 'standard' && S.secs > 30) add(Math.floor(700000 / S.secs));
+  bankGame();
+  sfx('win');
+  commit();
+  store.set('ksol_game', null);
+  openModal(`<h2>🎉 You won!</h2>
+    <p>Hand score: <b>${fmt(S.score, S.mode)}</b><br>${clock(S.secs)} &middot; ${S.moves} moves</p>
+    <p>Session total: <b>${fmt(sess.total, S.mode)}</b> after ${sess.games} game${sess.games === 1 ? '' : 's'} (${sess.wins} won)</p>
+    <button class="pri" data-a="new">New game</button>
+    <button data-a="session">New session</button>
+    <button data-a="hof">Hall of Fame</button>`, false);
+}
+
+/* ---------- hints ---------- */
+function findMoves(){
+  const out = [], srcs = [];
+  if (S.waste.length) srcs.push(['waste', S.waste.length - 1]);
+  for (let i = 0; i < 7; i++) S.T[i].forEach((c, j) => { if (c.u) srcs.push(['t' + i, j]); });
+  const dsts = ['f0','f1','f2','f3','t0','t1','t2','t3','t4','t5','t6'];
+  for (const [id, idx] of srcs){
+    const p = pile(id), cards = p.slice(idx), c = cards[0];
+    for (const dst of dsts){
+      if (dst === id || !legalDrop(cards, dst)) continue;
+      let pr;
+      if (dst[0] === 'f') pr = 100;
+      else if (id[0] === 't'){
+        if (idx === 0 && c.r === 13) continue;
+        pr = (idx > 0 && !p[idx-1].u) ? 80 : idx === 0 ? 20 : 30;
+      } else pr = 60;
+      out.push({src:id, idx, dst, p:pr});
+    }
+  }
+  return out;
+}
+function showHint(){
+  if (busy || !S || S.won) return;
+  const mv = findMoves();
+  if (mv.length){
+    mv.sort((a,b) => b.p - a.p);
+    hint = {src:mv[0].src, idx:mv[0].idx, dst:mv[0].dst};
+  } else if (S.stock.length || (S.waste.length && canRecycle())){
+    hint = {src:'stock', idx:S.stock.length - 1, dst:null};
+    toast('No moves on the board. Try the stock.');
+  } else { toast('No moves available'); return; }
+  sel = null; render();
+  clearTimeout(hintT);
+  hintT = setTimeout(() => { hint = null; render(); }, 2200);
+}
+
+/* ---------- rendering ---------- */
+function geom(){
+  const W = board.clientWidth, H = board.clientHeight;
+  const pad = Math.max(6, W*.015), gap = Math.max(4, W*.012);
+  let cw = Math.min((W - 2*pad - 6*gap)/7, (H - 2*pad)/(1.4*3.7), 120);
+  cw = Math.max(20, Math.floor(cw));
+  const ch = Math.round(cw*1.4);
+  const x0 = (W - (7*cw + 6*gap))/2;
+  G = {W, H, pad, gap, cw, ch, x0, col:i => x0 + i*(cw + gap), topY:pad, tabY:pad + ch + Math.round(ch*.18)};
+}
+function mk(card, id, idx, x, y, z){
+  const d = document.createElement('div');
+  d.className = 'card' + (card.u ? (isRed(card) ? ' red' : ' black') : ' down');
+  d.dataset.pile = id; d.dataset.idx = idx;
+  d.style.left = Math.round(x) + 'px'; d.style.top = Math.round(y) + 'px'; d.style.zIndex = z;
+  if (card.u) d.innerHTML = '<span class="tl">' + RANKS[card.r] + SUITS[card.s] + '</span><span class="ct">' + SUITS[card.s] + '</span>';
+  if (sel && sel.id === id && idx >= sel.idx) d.classList.add('sel');
+  if (hint){
+    if (hint.src === id && idx >= hint.idx) d.classList.add('hint');
+    if (hint.dst === id && idx === pile(id).length - 1) d.classList.add('hint');
+  }
+  return d;
+}
+function render(){
+  if (!S || drag) return;
+  geom();
+  board.style.setProperty('--cw', G.cw + 'px');
+  board.style.setProperty('--ch', G.ch + 'px');
+  const frag = document.createDocumentFragment();
+  const slot = (id, x, y, txt) => {
+    const d = document.createElement('div');
+    d.className = 'slot'; d.dataset.slot = id;
+    d.style.left = x + 'px'; d.style.top = y + 'px'; d.textContent = txt || '';
+    if (hint && (hint.dst === id || (hint.src === 'stock' && id === 'stock'))) d.classList.add('hint');
+    frag.appendChild(d);
+  };
+  slot('stock', G.col(0), G.topY, S.stock.length ? '' : (S.waste.length ? (canRecycle() ? '↻' : '✕') : ''));
+  slot('waste', G.col(1), G.topY);
+  for (let i = 0; i < 4; i++) slot('f' + i, G.col(3 + i), G.topY, 'A');
+  for (let i = 0; i < 7; i++) slot('t' + i, G.col(i), G.tabY);
+
+  if (S.stock.length) frag.appendChild(mk(S.stock[S.stock.length-1], 'stock', S.stock.length-1, G.col(0), G.topY, 1));
+  const n = S.waste.length, k = Math.min(Math.max(S.wasteFan, 1), n);
+  for (let j = Math.max(0, n - k - 1); j < n; j++){
+    const off = j >= n - k ? (j - (n - k)) * G.cw * .36 : 0;
+    frag.appendChild(mk(S.waste[j], 'waste', j, G.col(1) + off, G.topY, j + 1));
+  }
+  for (let i = 0; i < 4; i++){
+    const p = S.F[i];
+    if (p.length) frag.appendChild(mk(p[p.length-1], 'f' + i, p.length - 1, G.col(3 + i), G.topY, 1));
+  }
+  const dn = G.ch * .12, up = G.ch * .27, avail = G.H - G.pad - G.tabY - G.ch;
+  for (let i = 0; i < 7; i++){
+    const col = S.T[i];
+    if (!col.length) continue;
+    let total = 0;
+    for (let j = 0; j < col.length - 1; j++) total += col[j].u ? up : dn;
+    const f = total > avail ? Math.max(.5, avail / total) : 1;
+    let y = G.tabY;
+    col.forEach((c, j) => { frag.appendChild(mk(c, 't' + i, j, G.col(i), y, j + 1)); y += (c.u ? up : dn) * f; });
+  }
+  board.textContent = '';
+  board.appendChild(frag);
+  updateHUD();
+}
+function updateHUD(){
+  if (!S || !sess) return;
+  $('sc').textContent = fmt(S.score, S.mode);
+  $('tot').textContent = fmt(sessionTotal(), S.mode);
+  $('mv').textContent = S.moves;
+  $('tm').textContent = clock(S.secs);
+  $('tmw').hidden = !settings.timer;
+  const n = sess.games + (S.banked ? 0 : 1);
+  $('label').textContent = sess.player + ' · ' + MODES[sess.mode] + ' · Draw ' + sess.draw + ' · Game ' + n + (sess.wins ? ' · ' + sess.wins + ' won' : '');
+  $('bUndo').hidden = !settings.undo;
+  $('bUndo').disabled = !undoStack.length || S.won;
+  $('bHint').hidden = !settings.hint;
+  $('bAuto').hidden = !(settings.auto && canAuto());
+}
+function save(){ if (S && !S.won) store.set('ksol_game', {S, undoStack}); }
+function commit(){ render(); save(); }
+
+/* ---------- input: tap & drag ---------- */
+let down = null, drag = null;
+board.addEventListener('contextmenu', e => e.preventDefault());
+board.addEventListener('pointerdown', e => {
+  if (busy || !S || S.won || down) return;
+  const el = e.target.closest('[data-pile],[data-slot]');
+  if (!el){ if (sel){ sel = null; render(); } return; }
+  down = {x:e.clientX, y:e.clientY, id:el.dataset.pile || el.dataset.slot, idx:el.dataset.idx != null ? +el.dataset.idx : null, pid:e.pointerId, moved:false};
+});
+window.addEventListener('pointermove', e => {
+  if (!down || e.pointerId !== down.pid) return;
+  const dx = e.clientX - down.x, dy = e.clientY - down.y;
+  if (!drag){
+    if (Math.hypot(dx, dy) < 8) return;
+    down.moved = true;
+    if (down.idx == null || !canDrag(down.id, down.idx)) return;
+    const els = [...board.querySelectorAll('.card')].filter(el => el.dataset.pile === down.id && +el.dataset.idx >= down.idx);
+    els.forEach(el => { el.classList.add('drag'); el.style.zIndex = 2000 + (+el.dataset.idx); });
+    drag = {els, id:down.id, idx:down.idx};
+  }
+  drag.els.forEach(el => { el.style.transform = `translate(${dx}px,${dy}px)`; });
+});
+window.addEventListener('pointerup', e => {
+  if (!down || e.pointerId !== down.pid) return;
+  const d = down; down = null;
+  if (drag){
+    const dr = drag; drag = null;
+    const dst = dropTarget(dr);
+    if (dst) applyMove(dr.id, dr.idx, dst); else render();
+    return;
+  }
+  if (d.moved) return;
+  handleTap(d.id, d.idx);
+});
+window.addEventListener('pointercancel', () => { down = null; if (drag){ drag = null; render(); } });
+
+function dropTarget(dr){
+  const br = board.getBoundingClientRect(), r = dr.els[0].getBoundingClientRect();
+  const rx = r.left - br.left, ry = r.top - br.top;
+  const cards = pile(dr.id).slice(dr.idx);
+  const cands = [];
+  for (let i = 0; i < 4; i++) cands.push({id:'f' + i, x:G.col(3 + i), y:G.topY, h:G.ch});
+  for (let i = 0; i < 7; i++) cands.push({id:'t' + i, x:G.col(i), y:G.tabY, h:G.H - G.tabY});
+  let best = null, bestA = G.cw * G.ch * .12;
+  for (const c of cands){
+    if (c.id === dr.id || !legalDrop(cards, c.id)) continue;
+    const ov = Math.max(0, Math.min(rx + G.cw, c.x + G.cw) - Math.max(rx, c.x)) * Math.max(0, Math.min(ry + G.ch, c.y + c.h) - Math.max(ry, c.y));
+    if (ov > bestA){ bestA = ov; best = c.id; }
+  }
+  return best;
+}
+
+function handleTap(id, idx){
+  if (id === 'stock'){ drawStock(); return; }
+  const now = Date.now();
+  if (settings.dbl && idx != null && lastTap && lastTap.id === id && lastTap.idx === idx && now - lastTap.t < 400){
+    lastTap = null;
+    if (tryAuto(id, idx)) return;
+    return;
+  }
+  lastTap = {id, idx, t:now};
+  if (sel){
+    if (sel.id === id && sel.idx === idx){ sel = null; render(); return; }
+    if ((id[0] === 'f' || id[0] === 't') && id !== sel.id){
+      const cards = pile(sel.id).slice(sel.idx);
+      if (legalDrop(cards, id)){ const s = sel; applyMove(s.id, s.idx, id); return; }
+    }
+    sel = null;
+  }
+  if (idx != null && canDrag(id, idx)) sel = {id, idx};
+  render();
+}
+
+/* ---------- modal system ---------- */
+const modalEl = $('modal');
+const modalOpen = () => modalEl.classList.contains('show');
+function openModal(html, dismissible){
+  modalEl.innerHTML = '<div class="box">' + html + '</div>';
+  modalEl.dataset.dismiss = dismissible === false ? '0' : '1';
+  modalEl.classList.add('show');
+  return modalEl.firstChild;
+}
+function closeModal(){ modalEl.classList.remove('show'); modalEl.innerHTML = ''; }
+modalEl.addEventListener('click', e => {
+  if (e.target === modalEl && modalEl.dataset.dismiss === '1'){ closeModal(); return; }
+  const a = e.target.closest('[data-a]');
+  if (a && actions[a.dataset.a]) actions[a.dataset.a](a);
+});
+modalEl.addEventListener('change', e => {
+  const k = e.target.dataset && e.target.dataset.k;
+  if (!k) return;
+  settings[k] = e.target.checked;
+  store.set('ksol_settings', settings);
+  if (k === 'sound' && settings.sound) tone(520, .08, 'triangle', .08);
+  if (k === 'vibe') vib(30);
+  updateHUD();
+});
+
+const actions = {
+  close: closeModal,
+  menu: showMenu,
+  new(){ closeModal(); newGameAction(); },
+  session(){ newSessionModal(); },
+  hof(){ hofModal(sess ? sess.mode : settings.scoring); },
+  hoftab(a){ hofModal(a.dataset.m); },
+  settings: settingsModal,
+  switch(){ askName(n => newSessionModal(n), true); },
+  exp: exportBackup,
+  imp(){ $('impFile').click(); },
+  reset(){
+    if (confirm('Erase ALL Hall of Fame scores on this device? This cannot be undone.')){
+      hof = {}; for (const k in MODES) hof[k] = []; store.set('ksol_hof', hof); toast('Hall of Fame cleared');
+    }
+  },
+};
+
+function showMenu(){
+  openModal(`<h2>Menu</h2>
+    <button class="pri" data-a="new">New game</button>
+    <button data-a="session">New session</button>
+    <button data-a="hof">Hall of Fame</button>
+    <button data-a="settings">Settings</button>
+    <button data-a="switch">Switch player (${esc(sess ? sess.player : player)})</button>
+    <button data-a="close">Back to game</button>`);
+}
+
+// Deal the next hand in the current session (asks first if a hand is in progress).
+function newGameAction(){
+  if (!sess){ newSessionModal(); return; }
+  if (!gameInProgress()){ dealNext(); return; }
+  const box = openModal(`<h2>Start a new game?</h2>
+    <p class="note">Your current game will be abandoned. Its score (${fmt(S.score, S.mode)}) still counts toward your session total${S.mode === 'vegas' ? ', and the next hand costs another $52 ante' : ''}.</p>
+    <div class="row"><button class="pri" id="ab">Abandon &amp; deal</button><button data-a="close">Keep playing</button></div>`);
+  box.querySelector('#ab').onclick = () => { closeModal(); dealNext(); };
+}
+
+function askName(cb, cancelable){
+  const names = [...new Set(Object.values(hof).flat().map(e => e.n))];
+  const box = openModal(`<h2>${cancelable ? 'Switch player' : 'Welcome!'}</h2>
+    <p>Who is playing?</p>
+    <input type="text" id="nm" maxlength="16" list="nl" placeholder="Your name" autocomplete="off">
+    <datalist id="nl">${names.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+    <div class="row"><button class="pri" id="nmOk">OK</button>${cancelable ? '<button id="nmCx">Cancel</button>' : ''}</div>`, false);
+  const input = box.querySelector('#nm');
+  const ok = () => { const n = input.value.trim() || 'Player'; closeModal(); cb(n); };
+  box.querySelector('#nmOk').onclick = ok;
+  input.onkeydown = e => { if (e.key === 'Enter') ok(); };
+  const cx = box.querySelector('#nmCx'); if (cx) cx.onclick = closeModal;
+  setTimeout(() => input.focus(), 50);
+}
+
+function newSessionModal(name){
+  const who = name || (sess ? sess.player : player) || 'Player';
+  let note = '';
+  if (sess){
+    const total = sessionTotal(), games = sess.games + (gameInProgress() ? 1 : 0), listed = total > 0 || sess.wins > 0;
+    if (games > 0) note = `<p class="note">Your current session (total ${fmt(total, sess.mode)} over ${games} game${games === 1 ? '' : 's'}) will be closed${listed ? ' and recorded in the Hall of Fame.' : '. It has no points, so it will not be listed.'}</p>`;
+  }
+  const radio = (name, val, label, desc, checked) => `<label><input type="radio" name="${name}" value="${val}" ${checked ? 'checked' : ''}> <b>${label}</b>${desc ? `<br><span class="sm">${desc}</span>` : ''}</label>`;
+  const box = openModal(`<h2>New session for ${esc(who)}</h2>
+    ${note}
+    <p class="sm">Scores add up across every game in a session. Changing the scoring or draw setting always starts a new session.</p>
+    <fieldset><legend>Cards drawn from the stock</legend>
+      ${radio('dr', 3, 'Draw 3', 'Harder, the Windows default', settings.draw === 3)}
+      ${radio('dr', 1, 'Draw 1', 'Easier', settings.draw === 1)}
+    </fieldset>
+    <fieldset><legend>Scoring</legend>
+      ${radio('sc', 'standard', 'Standard', '+10 card to foundation, +5 waste to column, +5 turning a card over, −15 foundation to column, −2 per 10 seconds, penalty for recycling the stock, time bonus for winning', settings.scoring === 'standard')}
+      ${radio('sc', 'vegas', 'Vegas', '$52 ante for every hand, +$5 per card on a foundation. One pass through the stock (three with Draw 3).', settings.scoring === 'vegas')}
+      ${radio('sc', 'simple', 'Simple', '+10 per card on a foundation, −1 per move, −1 per 30 seconds', settings.scoring === 'simple')}
+    </fieldset>
+    <div class="row"><button class="pri" id="go">Start session</button>${S ? '<button data-a="close">Cancel</button>' : ''}</div>`, false);
+  box.querySelector('#go').onclick = () => {
+    const draw = +box.querySelector('input[name=dr]:checked').value;
+    const mode = box.querySelector('input[name=sc]:checked').value;
+    let msg = '';
+    if (sess){
+      const r = endSession();
+      if (r && r.games > 0) msg = 'Session closed: ' + fmt(r.total, r.mode) + ' over ' + r.games + ' game' + (r.games === 1 ? '' : 's') + (r.rank >= 0 ? ' · #' + (r.rank + 1) + ' in the ' + MODES[r.mode] + ' Hall of Fame!' : '');
+    }
+    player = who; store.set('ksol_player', player);
+    settings.draw = draw; settings.scoring = mode; store.set('ksol_settings', settings);
+    closeModal();
+    startSession(who, draw, mode);
+    newGame(draw, mode);
+    if (msg) toast(msg, 4500);
+  };
+}
+
+function hofModal(mode){
+  const l = hof[mode];
+  const rows = l.length ? l.map((e, i) => `<tr><td>${i+1}</td><td><b>${esc(e.n)}</b></td><td class="r">${fmt(e.s, mode)}</td><td class="sm">${e.g} game${e.g === 1 ? '' : 's'}, ${e.w} won<br>Draw ${e.d} · ${esc(dt(e.t))}</td></tr>`).join('')
+    : '<tr><td colspan="4">No sessions yet. Finish a session to see it here.</td></tr>';
+  openModal(`<h2>Hall of Fame</h2>
+    <div class="row tabs">${Object.keys(MODES).map(m => `<button class="${m === mode ? 'on' : ''}" data-a="hoftab" data-m="${m}">${MODES[m]}</button>`).join('')}</div>
+    <table>${rows}</table>
+    <p class="sm">Each entry is a finished session: the total of all its games. The date is when the session ended.</p>
+    <button data-a="close">Close</button>`);
+}
+
+function settingsModal(){
+  const cb = (k, label) => `<label><input type="checkbox" data-k="${k}" ${settings[k] ? 'checked' : ''}> ${label}</label>`;
+  openModal(`<h2>Settings</h2>
+    <fieldset><legend>Helpers</legend>
+      ${cb('undo', 'Undo button')}
+      ${cb('hint', 'Hint button')}
+      ${cb('dbl', 'Double-tap sends a card to the foundation')}
+      ${cb('auto', 'Auto-complete button')}
+      ${cb('timer', 'Show timer (time still counts for scoring)')}
+    </fieldset>
+    <fieldset><legend>Feedback</legend>
+      ${cb('sound', 'Sound')}
+      ${cb('vibe', 'Vibration')}
+    </fieldset>
+    <fieldset><legend>Hall of Fame data</legend>
+      <button data-a="exp">Export backup</button>
+      <button data-a="imp">Import backup</button>
+      <button data-a="reset">Erase all scores</button>
+      <p class="sm">Scores are stored only on this device. Clearing browser data erases them, so export a backup now and then.</p>
+    </fieldset>
+    <button class="pri" data-a="close">Done</button>`);
+}
+
+function exportBackup(){
+  const blob = new Blob([JSON.stringify({app:'klondike-solitaire', v:2, exported:Date.now(), hof, settings, player})], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'solitaire-backup.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+}
+const impInput = document.createElement('input');
+impInput.type = 'file'; impInput.accept = '.json,application/json'; impInput.id = 'impFile'; impInput.hidden = true;
+document.body.appendChild(impInput);
+impInput.addEventListener('change', () => {
+  const f = impInput.files[0]; impInput.value = '';
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const d = JSON.parse(r.result);
+      if (!d || d.app !== 'klondike-solitaire' || !d.hof) throw new Error('bad');
+      let added = 0;
+      for (const m in MODES){
+        const inc = Array.isArray(d.hof[m]) ? d.hof[m].map(normEntry).filter(Boolean) : [];
+        const seen = new Set(hof[m].map(e => e.n + '|' + e.s + '|' + e.t));
+        for (const e of inc) if (!seen.has(e.n + '|' + e.s + '|' + e.t)){ hof[m].push(e); added++; }
+        hof[m].sort((a,b) => b.s - a.s || a.t - b.t); hof[m] = hof[m].slice(0, 5);
+      }
+      store.set('ksol_hof', hof);
+      toast('Backup imported (' + added + ' new session' + (added === 1 ? '' : 's') + ')');
+    }catch(e){ toast('That file is not a valid backup'); }
+  };
+  r.readAsText(f);
+});
+
+/* ---------- toolbar ---------- */
+$('bNew').onclick = newGameAction;
+$('bSess').onclick = () => newSessionModal();
+$('bUndo').onclick = undo;
+$('bHint').onclick = showHint;
+$('bAuto').onclick = autoComplete;
+$('bMenu').onclick = showMenu;
+
+/* ---------- timer ---------- */
+setInterval(() => {
+  if (!S || S.won || document.hidden || modalOpen() || S.moves < 1) return;
+  S.secs++;
+  if (S.mode === 'standard' && S.secs % 10 === 0) add(-2);
+  else if (S.mode === 'simple' && S.secs % 30 === 0) add(-1);
+  updateHUD();
+  if (S.secs % 10 === 0) save();
+}, 1000);
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+window.addEventListener('pagehide', save);
+if (window.ResizeObserver) new ResizeObserver(() => render()).observe(board);
+else window.addEventListener('resize', render);
+
+/* ---------- boot ---------- */
+(function boot(){
+  const saved = store.get('ksol_game', null);
+  const ss = store.get('ksol_session', null);
+  if (ss && typeof ss.total === 'number' && MODES[ss.mode] && (ss.draw === 1 || ss.draw === 3)) sess = ss;
+  if (saved && saved.S && Array.isArray(saved.S.T) && saved.S.T.length === 7 && Array.isArray(saved.S.stock) && !saved.S.won){
+    S = saved.S;
+    undoStack = Array.isArray(saved.undoStack) ? saved.undoStack : [];
+    if (S.banked === undefined) S.banked = false;
+    if (!sess){   // a game saved by an older version: wrap it in a fresh session
+      sess = {player:S.player || player || 'Player', draw:S.draw, mode:S.mode, total:0, games:0, wins:0, start:Date.now()};
+      saveSession();
+    }
+    if (S.mode !== sess.mode || S.draw !== sess.draw) S = null;
+  }
+  if (!player && sess) player = sess.player;
+  if (S) render();
+  else if (sess) newGame(sess.draw, sess.mode);
+  else if (!player) askName(n => newSessionModal(n), false);
+  else newSessionModal(player);
+})();
+})();
+</script>
+</body>
+</html>
